@@ -1,0 +1,17 @@
+# CRYPTORA local stack.
+# Frontend = Vite dev (browser scan engine). Backend = FastAPI scaffold.
+# MySQL + workers are ROADMAP (see IMPLEMENTATION_STATUS.md).
+services:
+  frontend:
+    image: node:20-alpine
+    working_dir: /app
+    volumes:
+      - ./frontend:/app
+    ports:
+      - "5173:5173"
+    command: sh -c "npm install --no-audit --no-fund && npm run dev"
+
+  backend:
+    build: ./backend
+    ports:
+      - "8000:8000"

@@ -1,0 +1,54 @@
+# CRYPTORA production stack: web (nginx + SPA) → backend (FastAPI) → mysql.
+# Run from repo root:  docker compose --env-file deploy/.env -f docker-compose.prod.yml up -d --build
+services:
+  web:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "8080:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: unless-stopped
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    environment:
+      DATABASE_URL: mysql+pymysql://${MYSQL_USER:-cryptora}:${MYSQL_PASSWORD:-change-me}@mysql:3306/${MYSQL_DATABASE:-cryptora}
+      CRYPTORA_JWT_SECRET: ${CRYPTORA_JWT_SECRET:-dev-only-secret-CHANGE-ME}
+      CRYPTORA_JWT_TTL: ${CRYPTORA_JWT_TTL:-86400}
+      FRONTEND_ORIGIN: ${FRONTEND_ORIGIN:-http://localhost:8080}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      DEV_MODE: ${DEV_MODE:-false}
+    depends_on:
+      mysql:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health')"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+    restart: unless-stopped
+
+  mysql:
+    image: mysql:8.0
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-change-me-root}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-cryptora}
+      MYSQL_USER: ${MYSQL_USER:-cryptora}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-change-me}
+    volumes:
+      - mysql-data:/var/lib/mysql
+      - ./deploy/mysql-init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-u", "${MYSQL_USER:-cryptora}", "-p${MYSQL_PASSWORD:-change-me}"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+    restart: unless-stopped
+
+volumes:
+  mysql-data:

@@ -1,0 +1,10 @@
+# Deploy ONLY the frontend folder on Netlify (static, zero backend needed for demo).
+[build]
+  base = "frontend"
+  command = "npm run build"
+  publish = "frontend/dist"
+
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
